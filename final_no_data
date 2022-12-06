@@ -1,0 +1,1604 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 12.9
+-- Dumped by pg_dump version 12.9
+
+-- Started on 2022-12-06 15:27:57 PST
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- TOC entry 2860 (class 1262 OID 18407)
+-- Name: final_project; Type: DATABASE; Schema: -; Owner: casey
+--
+
+CREATE DATABASE final_project WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';
+
+
+ALTER DATABASE final_project OWNER TO casey;
+
+\connect final_project
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- TOC entry 8 (class 2615 OID 18408)
+-- Name: final_project; Type: SCHEMA; Schema: -; Owner: casey
+--
+
+CREATE SCHEMA final_project;
+
+
+ALTER SCHEMA final_project OWNER TO casey;
+
+--
+-- TOC entry 260 (class 1255 OID 19198)
+-- Name: female_access(); Type: FUNCTION; Schema: final_project; Owner: casey
+--
+
+CREATE FUNCTION final_project.female_access() RETURNS trigger
+    LANGUAGE plpgsql
+    SET check_function_bodies TO 'true'
+    AS $$begin
+	--GRANT INSERT, SELECT, UPDATE, REFERENCES ON TABLE final_project.female_instance TO NEW.user_name;
+    --alter role NEW.user_name in role avg_female
+    GRANT avg_female TO user_name;
+end;
+$$;
+
+
+ALTER FUNCTION final_project.female_access() OWNER TO casey;
+
+--
+-- TOC entry 275 (class 1255 OID 19292)
+-- Name: get_condition_mood_interaction(character varying); Type: FUNCTION; Schema: final_project; Owner: casey
+--
+
+CREATE FUNCTION final_project.get_condition_mood_interaction(condition_name character varying) RETURNS TABLE(date__ date, symptom_ character varying, symptom_average_ numeric, overall_valence_ numeric, causing_condition_ character varying)
+    LANGUAGE plpgsql
+    AS $$
+begin
+	RETURN QUERY select date_, 
+					symptom, 
+					days_average as symptom_average, 
+					overall_valence as daily_valence, 
+					causing_condition as associated_condition 
+					from final_project.my_symptoms 
+					natural join final_project.my_valence 
+					natural join final_project.my_conditions_symptoms
+					where causing_condition = condition_name; 
+END;
+$$;
+
+
+ALTER FUNCTION final_project.get_condition_mood_interaction(condition_name character varying) OWNER TO casey;
+
+--
+-- TOC entry 274 (class 1255 OID 19306)
+-- Name: get_mood_symptom_interaction(character varying); Type: FUNCTION; Schema: final_project; Owner: casey
+--
+
+CREATE FUNCTION final_project.get_mood_symptom_interaction(mood_in character varying) RETURNS TABLE(date_symptom date, date_mood date, symptom character varying, symptom_avg numeric, directional_intensity numeric, mood_name character varying)
+    LANGUAGE plpgsql
+    AS $$
+begin
+	RETURN QUERY select ms.date_ as symptom_date,
+					mm.date_ as mood_date, 
+					ms.symptom, 
+					ms.days_average as symptom_average, 
+					mm.overall_valence as intensity, 
+					mm.name as mood_
+					from final_project.my_symptoms as ms
+					cross join final_project.my_moods as mm
+					--on ms.date_ within interval 1 day mm.date_
+					where mood_in = mm.name and 
+						((mm.date_= ms.date_) or 
+						 ((mm.date_ + interval '1 day') = ms.date_) or 
+						 ((mm.date_+ interval '2 days') = ms.date_)); 
+END;
+$$;
+
+
+ALTER FUNCTION final_project.get_mood_symptom_interaction(mood_in character varying) OWNER TO casey;
+
+--
+-- TOC entry 273 (class 1255 OID 19300)
+-- Name: get_symptom_mood_interaction(character varying); Type: FUNCTION; Schema: final_project; Owner: casey
+--
+
+CREATE FUNCTION final_project.get_symptom_mood_interaction(symp character varying) RETURNS TABLE(date__ date, symptom_ character varying, symptom_average_ numeric, overall_valence_ numeric)
+    LANGUAGE plpgsql
+    AS $$
+begin
+	RETURN QUERY select date_, 
+					symptom, 
+					days_average as symptom_average, 
+					overall_valence as daily_valence 
+					from final_project.my_symptoms 
+					natural join final_project.my_valence
+					where symp = symptom; 
+END;
+$$;
+
+
+ALTER FUNCTION final_project.get_symptom_mood_interaction(symp character varying) OWNER TO casey;
+
+--
+-- TOC entry 259 (class 1255 OID 19347)
+-- Name: sex_to_lowercase(); Type: FUNCTION; Schema: final_project; Owner: casey
+--
+
+CREATE FUNCTION final_project.sex_to_lowercase() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+    new.sex_at_birth = lower(new.sex_at_birth);
+end;
+$$;
+
+
+ALTER FUNCTION final_project.sex_to_lowercase() OWNER TO casey;
+
+--
+-- TOC entry 258 (class 1255 OID 19344)
+-- Name: to_lowercase(character varying); Type: FUNCTION; Schema: final_project; Owner: casey
+--
+
+CREATE FUNCTION final_project.to_lowercase(str character varying) RETURNS character varying
+    LANGUAGE plpgsql
+    AS $$
+begin
+    RETURN LOWER(str);
+end;
+$$;
+
+
+ALTER FUNCTION final_project.to_lowercase(str character varying) OWNER TO casey;
+
+--
+-- TOC entry 256 (class 1255 OID 19337)
+-- Name: user_access(); Type: FUNCTION; Schema: final_project; Owner: casey
+--
+
+CREATE FUNCTION final_project.user_access() RETURNS trigger
+    LANGUAGE plpgsql
+    SET check_function_bodies TO 'true'
+    AS $$
+begin
+    CREATE ROLE user_name IN ROLE avg_user;
+end;
+$$;
+
+
+ALTER FUNCTION final_project.user_access() OWNER TO casey;
+
+--
+-- TOC entry 257 (class 1255 OID 19342)
+-- Name: user_access(character varying); Type: FUNCTION; Schema: final_project; Owner: casey
+--
+
+CREATE FUNCTION final_project.user_access(username character varying) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+begin
+    CREATE ROLE username IN ROLE avg_user;
+end;
+$$;
+
+
+ALTER FUNCTION final_project.user_access(username character varying) OWNER TO casey;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- TOC entry 244 (class 1259 OID 19114)
+-- Name: body_measure_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.body_measure_instance (
+    date timestamp without time zone NOT NULL,
+    body_measure_type_measure_id integer NOT NULL,
+    user_user_name character varying(45) NOT NULL,
+    amount numeric(5,2) NOT NULL
+);
+
+
+ALTER TABLE final_project.body_measure_instance OWNER TO casey;
+
+--
+-- TOC entry 226 (class 1259 OID 18757)
+-- Name: body_measure_type; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.body_measure_type (
+    measure_id integer NOT NULL,
+    name character varying(45) NOT NULL,
+    units public.units_opts NOT NULL
+);
+
+
+ALTER TABLE final_project.body_measure_type OWNER TO casey;
+
+--
+-- TOC entry 225 (class 1259 OID 18755)
+-- Name: body_measure_type_measure_id_seq; Type: SEQUENCE; Schema: final_project; Owner: casey
+--
+
+CREATE SEQUENCE final_project.body_measure_type_measure_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE final_project.body_measure_type_measure_id_seq OWNER TO casey;
+
+--
+-- TOC entry 2865 (class 0 OID 0)
+-- Dependencies: 225
+-- Name: body_measure_type_measure_id_seq; Type: SEQUENCE OWNED BY; Schema: final_project; Owner: casey
+--
+
+ALTER SEQUENCE final_project.body_measure_type_measure_id_seq OWNED BY final_project.body_measure_type.measure_id;
+
+
+--
+-- TOC entry 210 (class 1259 OID 18513)
+-- Name: condition_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.condition_instance (
+    onset_date date NOT NULL,
+    diagnosing_doctor character varying(45),
+    user_user_name character varying(45) NOT NULL,
+    condition_instance_id integer NOT NULL,
+    condition_type_condition_id integer NOT NULL
+);
+
+
+ALTER TABLE final_project.condition_instance OWNER TO casey;
+
+--
+-- TOC entry 209 (class 1259 OID 18511)
+-- Name: condition_instance_condition_instance_id_seq; Type: SEQUENCE; Schema: final_project; Owner: casey
+--
+
+CREATE SEQUENCE final_project.condition_instance_condition_instance_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE final_project.condition_instance_condition_instance_id_seq OWNER TO casey;
+
+--
+-- TOC entry 2867 (class 0 OID 0)
+-- Dependencies: 209
+-- Name: condition_instance_condition_instance_id_seq; Type: SEQUENCE OWNED BY; Schema: final_project; Owner: casey
+--
+
+ALTER SEQUENCE final_project.condition_instance_condition_instance_id_seq OWNED BY final_project.condition_instance.condition_instance_id;
+
+
+--
+-- TOC entry 216 (class 1259 OID 18637)
+-- Name: condition_medication; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.condition_medication (
+    date date NOT NULL,
+    medication_type_medication_name character varying(45) NOT NULL,
+    condition_instance_condition_instance_id integer NOT NULL
+);
+
+
+ALTER TABLE final_project.condition_medication OWNER TO casey;
+
+--
+-- TOC entry 215 (class 1259 OID 18635)
+-- Name: condition_medication_condition_instance_condition_instance__seq; Type: SEQUENCE; Schema: final_project; Owner: casey
+--
+
+CREATE SEQUENCE final_project.condition_medication_condition_instance_condition_instance__seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE final_project.condition_medication_condition_instance_condition_instance__seq OWNER TO casey;
+
+--
+-- TOC entry 2868 (class 0 OID 0)
+-- Dependencies: 215
+-- Name: condition_medication_condition_instance_condition_instance__seq; Type: SEQUENCE OWNED BY; Schema: final_project; Owner: casey
+--
+
+ALTER SEQUENCE final_project.condition_medication_condition_instance_condition_instance__seq OWNED BY final_project.condition_medication.condition_instance_condition_instance_id;
+
+
+--
+-- TOC entry 214 (class 1259 OID 18620)
+-- Name: condition_symptom; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.condition_symptom (
+    symptom_type_symptom_name character varying(45) NOT NULL,
+    condition_instance_condition_instance_id integer NOT NULL
+);
+
+
+ALTER TABLE final_project.condition_symptom OWNER TO casey;
+
+--
+-- TOC entry 208 (class 1259 OID 18505)
+-- Name: condition_type; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.condition_type (
+    condition_name character varying(45) NOT NULL,
+    chronicity public.chron_opts NOT NULL,
+    condition_id integer NOT NULL
+);
+
+
+ALTER TABLE final_project.condition_type OWNER TO casey;
+
+--
+-- TOC entry 207 (class 1259 OID 18503)
+-- Name: condition_type_condition_id_seq; Type: SEQUENCE; Schema: final_project; Owner: casey
+--
+
+CREATE SEQUENCE final_project.condition_type_condition_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE final_project.condition_type_condition_id_seq OWNER TO casey;
+
+--
+-- TOC entry 2870 (class 0 OID 0)
+-- Dependencies: 207
+-- Name: condition_type_condition_id_seq; Type: SEQUENCE OWNED BY; Schema: final_project; Owner: casey
+--
+
+ALTER SEQUENCE final_project.condition_type_condition_id_seq OWNED BY final_project.condition_type.condition_id;
+
+
+--
+-- TOC entry 203 (class 1259 OID 18409)
+-- Name: country_lookup_table; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.country_lookup_table (
+    country_abbreviation character varying(3) NOT NULL,
+    country_name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.country_lookup_table OWNER TO casey;
+
+--
+-- TOC entry 229 (class 1259 OID 18799)
+-- Name: exercise_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.exercise_instance (
+    date timestamp without time zone NOT NULL,
+    exercise_type_exercise_id integer NOT NULL,
+    user_user_name character varying(45) NOT NULL,
+    perceived_intensity public.sev_opts NOT NULL,
+    duration time without time zone NOT NULL
+);
+
+
+ALTER TABLE final_project.exercise_instance OWNER TO casey;
+
+--
+-- TOC entry 228 (class 1259 OID 18793)
+-- Name: exercise_type; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.exercise_type (
+    exercise_id integer NOT NULL,
+    name character varying(45) NOT NULL,
+    category public.ex_opts
+);
+
+
+ALTER TABLE final_project.exercise_type OWNER TO casey;
+
+--
+-- TOC entry 227 (class 1259 OID 18791)
+-- Name: exercise_type_exercise_id_seq; Type: SEQUENCE; Schema: final_project; Owner: casey
+--
+
+CREATE SEQUENCE final_project.exercise_type_exercise_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE final_project.exercise_type_exercise_id_seq OWNER TO casey;
+
+--
+-- TOC entry 2874 (class 0 OID 0)
+-- Dependencies: 227
+-- Name: exercise_type_exercise_id_seq; Type: SEQUENCE OWNED BY; Schema: final_project; Owner: casey
+--
+
+ALTER SEQUENCE final_project.exercise_type_exercise_id_seq OWNED BY final_project.exercise_type.exercise_id;
+
+
+--
+-- TOC entry 206 (class 1259 OID 18483)
+-- Name: female_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.female_instance (
+    start_date date NOT NULL,
+    user_user_name character varying(45) NOT NULL,
+    event_type public.f_opts NOT NULL
+);
+
+
+ALTER TABLE final_project.female_instance OWNER TO casey;
+
+--
+-- TOC entry 234 (class 1259 OID 18869)
+-- Name: food_bev_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.food_bev_instance (
+    date timestamp without time zone NOT NULL,
+    amount double precision,
+    units public.funits_opts,
+    food_bev_type_name character varying(55) NOT NULL,
+    user_user_name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.food_bev_instance OWNER TO casey;
+
+--
+-- TOC entry 233 (class 1259 OID 18842)
+-- Name: food_bev_type; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.food_bev_type (
+    name character varying(55) NOT NULL
+);
+
+
+ALTER TABLE final_project.food_bev_type OWNER TO casey;
+
+--
+-- TOC entry 237 (class 1259 OID 18935)
+-- Name: intoxicant_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.intoxicant_instance (
+    recreational_intoxicant_intoxicant_id integer NOT NULL,
+    user_user_name character varying(45) NOT NULL,
+    amount double precision NOT NULL,
+    date timestamp without time zone NOT NULL
+);
+
+
+ALTER TABLE final_project.intoxicant_instance OWNER TO casey;
+
+--
+-- TOC entry 231 (class 1259 OID 18816)
+-- Name: locations; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.locations (
+    location_id integer NOT NULL,
+    location_name character varying(45) NOT NULL,
+    street_address integer,
+    street character varying(45),
+    city character varying(45),
+    state_lookup_country_lookup_table_country_abbreviation character varying(3),
+    state_lookup_state_abbreviation character varying(3),
+    user_user_name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.locations OWNER TO casey;
+
+--
+-- TOC entry 230 (class 1259 OID 18814)
+-- Name: locations_location_id_seq; Type: SEQUENCE; Schema: final_project; Owner: casey
+--
+
+CREATE SEQUENCE final_project.locations_location_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE final_project.locations_location_id_seq OWNER TO casey;
+
+--
+-- TOC entry 2880 (class 0 OID 0)
+-- Dependencies: 230
+-- Name: locations_location_id_seq; Type: SEQUENCE OWNED BY; Schema: final_project; Owner: casey
+--
+
+ALTER SEQUENCE final_project.locations_location_id_seq OWNED BY final_project.locations.location_id;
+
+
+--
+-- TOC entry 248 (class 1259 OID 19154)
+-- Name: medication_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.medication_instance (
+    date_time timestamp without time zone NOT NULL,
+    units public.dose_opts NOT NULL,
+    dose numeric(5,2) NOT NULL,
+    medication_type_medication_name character varying(45) NOT NULL,
+    user_user_name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.medication_instance OWNER TO casey;
+
+--
+-- TOC entry 213 (class 1259 OID 18577)
+-- Name: medication_type; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.medication_type (
+    medication_name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.medication_type OWNER TO casey;
+
+--
+-- TOC entry 220 (class 1259 OID 18677)
+-- Name: mood_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.mood_instance (
+    date_time timestamp without time zone NOT NULL,
+    user_user_name character varying(45) NOT NULL,
+    severity public.sev_opts NOT NULL,
+    mood_type_id integer NOT NULL
+);
+
+
+ALTER TABLE final_project.mood_instance OWNER TO casey;
+
+--
+-- TOC entry 219 (class 1259 OID 18675)
+-- Name: mood_instance_mood_type_id_seq; Type: SEQUENCE; Schema: final_project; Owner: casey
+--
+
+CREATE SEQUENCE final_project.mood_instance_mood_type_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE final_project.mood_instance_mood_type_id_seq OWNER TO casey;
+
+--
+-- TOC entry 2884 (class 0 OID 0)
+-- Dependencies: 219
+-- Name: mood_instance_mood_type_id_seq; Type: SEQUENCE OWNED BY; Schema: final_project; Owner: casey
+--
+
+ALTER SEQUENCE final_project.mood_instance_mood_type_id_seq OWNED BY final_project.mood_instance.mood_type_id;
+
+
+--
+-- TOC entry 218 (class 1259 OID 18668)
+-- Name: mood_type; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.mood_type (
+    id integer NOT NULL,
+    is_negative_valence boolean DEFAULT false NOT NULL,
+    name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.mood_type OWNER TO casey;
+
+--
+-- TOC entry 217 (class 1259 OID 18666)
+-- Name: mood_type_id_seq; Type: SEQUENCE; Schema: final_project; Owner: casey
+--
+
+CREATE SEQUENCE final_project.mood_type_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE final_project.mood_type_id_seq OWNER TO casey;
+
+--
+-- TOC entry 2886 (class 0 OID 0)
+-- Dependencies: 217
+-- Name: mood_type_id_seq; Type: SEQUENCE OWNED BY; Schema: final_project; Owner: casey
+--
+
+ALTER SEQUENCE final_project.mood_type_id_seq OWNED BY final_project.mood_type.id;
+
+
+--
+-- TOC entry 249 (class 1259 OID 19265)
+-- Name: my_conditions; Type: VIEW; Schema: final_project; Owner: casey
+--
+
+CREATE VIEW final_project.my_conditions AS
+ SELECT condition_instance.condition_instance_id AS id_,
+    condition_type.condition_name,
+    condition_instance.onset_date
+   FROM (final_project.condition_instance
+     JOIN final_project.condition_type ON ((condition_instance.condition_type_condition_id = condition_type.condition_id)));
+
+
+ALTER TABLE final_project.my_conditions OWNER TO casey;
+
+--
+-- TOC entry 250 (class 1259 OID 19273)
+-- Name: my_conditions_symptoms; Type: VIEW; Schema: final_project; Owner: casey
+--
+
+CREATE VIEW final_project.my_conditions_symptoms AS
+ SELECT my_conditions.condition_name AS causing_condition,
+    condition_symptom.symptom_type_symptom_name AS symptom
+   FROM (final_project.my_conditions
+     JOIN final_project.condition_symptom ON ((my_conditions.id_ = condition_symptom.condition_instance_condition_instance_id)));
+
+
+ALTER TABLE final_project.my_conditions_symptoms OWNER TO casey;
+
+--
+-- TOC entry 212 (class 1259 OID 18562)
+-- Name: symptom_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.symptom_instance (
+    date_time timestamp without time zone NOT NULL,
+    severity numeric(2,1) NOT NULL,
+    duration time without time zone,
+    symptom_type_symptom_name character varying(45) NOT NULL,
+    user_user_name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.symptom_instance OWNER TO casey;
+
+--
+-- TOC entry 245 (class 1259 OID 19129)
+-- Name: my_symptoms; Type: VIEW; Schema: final_project; Owner: casey
+--
+
+CREATE VIEW final_project.my_symptoms AS
+ SELECT (si.date_time)::date AS date_,
+    si.symptom_type_symptom_name AS symptom,
+    avg(si.severity) AS days_average,
+    max(si.severity) AS days_max,
+    min(si.severity) AS days_min
+   FROM final_project.symptom_instance si
+  GROUP BY ((si.date_time)::date), si.symptom_type_symptom_name
+  ORDER BY ((si.date_time)::date), si.symptom_type_symptom_name;
+
+
+ALTER TABLE final_project.my_symptoms OWNER TO casey;
+
+--
+-- TOC entry 251 (class 1259 OID 19277)
+-- Name: my_flares; Type: VIEW; Schema: final_project; Owner: casey
+--
+
+CREATE VIEW final_project.my_flares AS
+ SELECT my_symptoms.date_,
+    avg(my_symptoms.days_average) AS flare_score
+   FROM final_project.my_symptoms
+  GROUP BY my_symptoms.date_;
+
+
+ALTER TABLE final_project.my_flares OWNER TO casey;
+
+--
+-- TOC entry 247 (class 1259 OID 19150)
+-- Name: my_moods; Type: VIEW; Schema: final_project; Owner: casey
+--
+
+CREATE VIEW final_project.my_moods AS
+ SELECT (mi.date_time)::date AS date_,
+    mt.name,
+    avg(
+        CASE
+            WHEN mt.is_negative_valence THEN ((mi.severity)::integer * '-1'::integer)
+            ELSE (mi.severity)::integer
+        END) AS overall_valence
+   FROM (final_project.mood_instance mi
+     JOIN final_project.mood_type mt ON ((mt.id = mi.mood_type_id)))
+  GROUP BY ((mi.date_time)::date), mt.name;
+
+
+ALTER TABLE final_project.my_moods OWNER TO casey;
+
+--
+-- TOC entry 246 (class 1259 OID 19145)
+-- Name: my_valence; Type: VIEW; Schema: final_project; Owner: casey
+--
+
+CREATE VIEW final_project.my_valence AS
+ WITH wv AS (
+         SELECT (mi.date_time)::date AS date_,
+            mt.name,
+            avg(
+                CASE
+                    WHEN mt.is_negative_valence THEN ((mi.severity)::integer * '-1'::integer)
+                    ELSE (mi.severity)::integer
+                END) AS overall_valence
+           FROM (final_project.mood_instance mi
+             JOIN final_project.mood_type mt ON ((mt.id = mi.mood_type_id)))
+          GROUP BY ((mi.date_time)::date), mt.name
+        )
+ SELECT wv.date_,
+    avg(wv.overall_valence) AS overall_valence
+   FROM wv
+  GROUP BY wv.date_
+  ORDER BY wv.date_;
+
+
+ALTER TABLE final_project.my_valence OWNER TO casey;
+
+--
+-- TOC entry 253 (class 1259 OID 19293)
+-- Name: my_wellness; Type: VIEW; Schema: final_project; Owner: casey
+--
+
+CREATE VIEW final_project.my_wellness AS
+ WITH inny AS (
+         SELECT my_symptoms.date_,
+            avg(my_symptoms.days_average) AS flare_avg,
+            my_valence.overall_valence
+           FROM (final_project.my_symptoms
+             JOIN final_project.my_valence USING (date_))
+          GROUP BY my_symptoms.date_, my_valence.overall_valence
+        )
+ SELECT inny.date_,
+    ((inny.flare_avg * 1.5) + (inny.overall_valence / (2)::numeric)) AS wellness_score
+   FROM inny;
+
+
+ALTER TABLE final_project.my_wellness OWNER TO casey;
+
+--
+-- TOC entry 240 (class 1259 OID 19000)
+-- Name: positive_event_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.positive_event_instance (
+    date timestamp without time zone NOT NULL,
+    duration time without time zone,
+    locations_location_id integer,
+    positive_event_type_event_name character varying(45) NOT NULL,
+    user_user_name character varying(45) NOT NULL,
+    positive_experience_rating public.sev_opts NOT NULL
+);
+
+
+ALTER TABLE final_project.positive_event_instance OWNER TO casey;
+
+--
+-- TOC entry 239 (class 1259 OID 18995)
+-- Name: positive_event_type; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.positive_event_type (
+    event_name character varying(45) NOT NULL,
+    event_category public.pe_types NOT NULL
+);
+
+
+ALTER TABLE final_project.positive_event_type OWNER TO casey;
+
+--
+-- TOC entry 236 (class 1259 OID 18929)
+-- Name: recreational_intoxicant; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.recreational_intoxicant (
+    intoxicant_id integer NOT NULL,
+    name character varying(45) NOT NULL,
+    measurement_units public.intox_units NOT NULL,
+    ingestion_method public.intox_method NOT NULL,
+    class_category public.intox_cat NOT NULL
+);
+
+
+ALTER TABLE final_project.recreational_intoxicant OWNER TO casey;
+
+--
+-- TOC entry 235 (class 1259 OID 18927)
+-- Name: recreational_intoxicant_intoxicant_id_seq; Type: SEQUENCE; Schema: final_project; Owner: casey
+--
+
+CREATE SEQUENCE final_project.recreational_intoxicant_intoxicant_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE final_project.recreational_intoxicant_intoxicant_id_seq OWNER TO casey;
+
+--
+-- TOC entry 2898 (class 0 OID 0)
+-- Dependencies: 235
+-- Name: recreational_intoxicant_intoxicant_id_seq; Type: SEQUENCE OWNED BY; Schema: final_project; Owner: casey
+--
+
+ALTER SEQUENCE final_project.recreational_intoxicant_intoxicant_id_seq OWNED BY final_project.recreational_intoxicant.intoxicant_id;
+
+
+--
+-- TOC entry 232 (class 1259 OID 18827)
+-- Name: sleep_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.sleep_instance (
+    date date NOT NULL,
+    duration time without time zone NOT NULL,
+    alone boolean NOT NULL,
+    preceived_quality public.sev_opts,
+    deep time without time zone,
+    light time without time zone,
+    awake time without time zone,
+    sleep_locations_location_id integer,
+    user_user_name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.sleep_instance OWNER TO casey;
+
+--
+-- TOC entry 204 (class 1259 OID 18414)
+-- Name: state_lookup; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.state_lookup (
+    country_lookup_table_country_abbreviation character varying(3) NOT NULL,
+    state_name character varying(45) NOT NULL,
+    state_abbreviation character varying(3) NOT NULL
+);
+
+
+ALTER TABLE final_project.state_lookup OWNER TO casey;
+
+--
+-- TOC entry 241 (class 1259 OID 19034)
+-- Name: stressor_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.stressor_instance (
+    start_date timestamp without time zone NOT NULL,
+    duration time without time zone NOT NULL,
+    locations_location_id integer,
+    stress_type public.stress_types NOT NULL,
+    user_user_name character varying(45) NOT NULL,
+    stress_intesity public.sev_opts NOT NULL
+);
+
+
+ALTER TABLE final_project.stressor_instance OWNER TO casey;
+
+--
+-- TOC entry 211 (class 1259 OID 18550)
+-- Name: symptom_type; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.symptom_type (
+    symptom_name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.symptom_type OWNER TO casey;
+
+--
+-- TOC entry 221 (class 1259 OID 18693)
+-- Name: tool_lookup; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.tool_lookup (
+    toolname character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.tool_lookup OWNER TO casey;
+
+--
+-- TOC entry 238 (class 1259 OID 18965)
+-- Name: transport_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.transport_instance (
+    date timestamp without time zone NOT NULL,
+    duration time without time zone NOT NULL,
+    for_pleasure boolean,
+    depart_location integer,
+    arrival_location integer,
+    transport_type public.t_types NOT NULL,
+    user_user_name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.transport_instance OWNER TO casey;
+
+--
+-- TOC entry 242 (class 1259 OID 19049)
+-- Name: treatment; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.treatment (
+    treatment_name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.treatment OWNER TO casey;
+
+--
+-- TOC entry 243 (class 1259 OID 19054)
+-- Name: treatment_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.treatment_instance (
+    date timestamp without time zone NOT NULL,
+    duration time without time zone,
+    treatment_treatment_name character varying(45) NOT NULL,
+    user_user_name character varying(45) NOT NULL
+);
+
+
+ALTER TABLE final_project.treatment_instance OWNER TO casey;
+
+--
+-- TOC entry 205 (class 1259 OID 18459)
+-- Name: user; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project."user" (
+    user_name character varying(45) NOT NULL,
+    fname character varying(45) NOT NULL,
+    lname character varying(45) NOT NULL,
+    dob date NOT NULL,
+    state_loookup_country_lookup_table_country_abbreviation character varying(3) NOT NULL,
+    state_lookup_state_abbrviation character varying(3) NOT NULL,
+    sex_at_birth public.sex_opts NOT NULL,
+    CONSTRAINT valid_user CHECK (((user_name)::text ~ '[A-Za-z_$%@+(){}<;]'::text))
+);
+
+
+ALTER TABLE final_project."user" OWNER TO casey;
+
+--
+-- TOC entry 224 (class 1259 OID 18725)
+-- Name: vital_instance; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.vital_instance (
+    date timestamp without time zone NOT NULL,
+    fasting boolean NOT NULL,
+    vitals_type_vital_code integer NOT NULL,
+    user_user_name character varying(45) NOT NULL,
+    amount numeric(5,2) NOT NULL
+);
+
+
+ALTER TABLE final_project.vital_instance OWNER TO casey;
+
+--
+-- TOC entry 223 (class 1259 OID 18713)
+-- Name: vitals_type; Type: TABLE; Schema: final_project; Owner: casey
+--
+
+CREATE TABLE final_project.vitals_type (
+    vital_code integer NOT NULL,
+    upper_lim integer NOT NULL,
+    lower_lim integer NOT NULL,
+    unit character varying(6) NOT NULL,
+    vital_name character varying(45),
+    positions_lookup_positions_latin_name public.pos_opts NOT NULL,
+    tool_lookup_toolname character varying(45) NOT NULL,
+    CONSTRAINT valid_limits CHECK ((upper_lim > lower_lim))
+);
+
+
+ALTER TABLE final_project.vitals_type OWNER TO casey;
+
+--
+-- TOC entry 222 (class 1259 OID 18711)
+-- Name: vitals_type_vital_code_seq; Type: SEQUENCE; Schema: final_project; Owner: casey
+--
+
+CREATE SEQUENCE final_project.vitals_type_vital_code_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE final_project.vitals_type_vital_code_seq OWNER TO casey;
+
+--
+-- TOC entry 2910 (class 0 OID 0)
+-- Dependencies: 222
+-- Name: vitals_type_vital_code_seq; Type: SEQUENCE OWNED BY; Schema: final_project; Owner: casey
+--
+
+ALTER SEQUENCE final_project.vitals_type_vital_code_seq OWNED BY final_project.vitals_type.vital_code;
+
+
+--
+-- TOC entry 252 (class 1259 OID 19281)
+-- Name: worst_culprits; Type: VIEW; Schema: final_project; Owner: casey
+--
+
+CREATE VIEW final_project.worst_culprits AS
+ SELECT second_inner.date_,
+    array_agg(DISTINCT second_inner.symptom) AS worst_rated_symptoms,
+    avg(second_inner.days_average) AS symptom_intensity,
+    array_agg(DISTINCT second_inner.causing_condition) AS potential_culprits
+   FROM ( SELECT inner_.symptom,
+            inner_.days_average,
+            rank() OVER (PARTITION BY inner_.date_ ORDER BY inner_.days_average DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rank_,
+            inner_.date_,
+            inner_.causing_condition
+           FROM ( SELECT my_symptoms.symptom,
+                    my_symptoms.date_,
+                    my_symptoms.days_average,
+                    my_symptoms.days_max,
+                    my_symptoms.days_min,
+                    my_conditions_symptoms.causing_condition
+                   FROM (final_project.my_symptoms
+                     JOIN final_project.my_conditions_symptoms USING (symptom))) inner_) second_inner
+  WHERE (second_inner.rank_ = 1)
+  GROUP BY second_inner.date_;
+
+
+ALTER TABLE final_project.worst_culprits OWNER TO casey;
+
+--
+-- TOC entry 2534 (class 2604 OID 18760)
+-- Name: body_measure_type measure_id; Type: DEFAULT; Schema: final_project; Owner: casey
+--
+
+ALTER TABLE ONLY final_project.body_measure_type ALTER COLUMN measure_id SET DEFAULT nextval('final_project.body_measure_type_measure_id_seq'::regclass);
+
+
+--
+-- TOC entry 2527 (class 2604 OID 18516)
+-- Name: condition_instance condition_instance_id; Type: DEFAULT; Schema: final_project; Owner: casey
+--
+
+ALTER TABLE ONLY final_project.condition_instance ALTER COLUMN condition_instance_id SET DEFAULT nextval('final_project.condition_instance_condition_instance_id_seq'::regclass);
+
+
+--
+-- TOC entry 2528 (class 2604 OID 18640)
+-- Name: condition_medication condition_instance_condition_instance_id; Type: DEFAULT; Schema: final_project; Owner: casey
+--
+
+ALTER TABLE ONLY final_project.condition_medication ALTER COLUMN condition_instance_condition_instance_id SET DEFAULT nextval('final_project.condition_medication_condition_instance_condition_instance__seq'::regclass);
+
+
+--
+-- TOC entry 2526 (class 2604 OID 18508)
+-- Name: condition_type condition_id; Type: DEFAULT; Schema: final_project; Owner: casey
+--
+
+ALTER TABLE ONLY final_project.condition_type ALTER COLUMN condition_id SET DEFAULT nextval('final_project.condition_type_condition_id_seq'::regclass);
+
+
+--
+-- TOC entry 2535 (class 2604 OID 18796)
+-- Name: exercise_type exercise_id; Type: DEFAULT; Schema: final_project; Owner: casey
+--
+
+ALTER TABLE ONLY final_project.exercise_type ALTER COLUMN exercise_id SET DEFAULT nextval('final_project.exercise_type_exercise_id_seq'::regclass);
+
+
+--
+-- TOC entry 2536 (class 2604 OID 18819)
+-- Name: locations location_id; Type: DEFAULT; Schema: final_project; Owner: casey
+--
+
+ALTER TABLE ONLY final_project.locations ALTER COLUMN location_id SET DEFAULT nextval('final_project.locations_location_id_seq'::regclass);
+
+
+--
+-- TOC entry 2531 (class 2604 OID 18680)
+-- Name: mood_instance mood_type_id; Type: DEFAULT; Schema: final_project; Owner: casey
+--
+
+ALTER TABLE ONLY final_project.mood_instance ALTER COLUMN mood_type_id SET DEFAULT nextval('final_project.mood_instance_mood_type_id_seq'::regclass);
+
+
+--
+-- TOC entry 2529 (class 2604 OID 18671)
+-- Name: mood_type id; Type: DEFAULT; Schema: final_project; Owner: casey
+--
+
+ALTER TABLE ONLY final_project.mood_type ALTER COLUMN id SET DEFAULT nextval('final_project.mood_type_id_seq'::regclass);
+
+
+--
+-- TOC entry 2537 (class 2604 OID 18932)
+-- Name: recreational_intoxicant intoxicant_id; Type: DEFAULT; Schema: final_project; Owner: casey
+--
+
+ALTER TABLE ONLY final_project.recreational_intoxicant ALTER COLUMN intoxicant_id SET DEFAULT nextval('final_project.recreational_intoxicant_intoxicant_id_seq'::regclass);
+
+
+--
+-- TOC entry 2532 (class 2604 OID 18716)
+-- Name: vitals_type vital_code; Type: DEFAULT; Schema: final_project; Owner: casey
+--
+
+ALTER TABLE ONLY final_project.vitals_type ALTER COLUMN vital_code SET DEFAULT nextval('final_project.vitals_type_vital_code_seq'::regclass);
+
+
+--
+-- TOC entry 2861 (class 0 OID 0)
+-- Dependencies: 275
+-- Name: FUNCTION get_condition_mood_interaction(condition_name character varying); Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT ALL ON FUNCTION final_project.get_condition_mood_interaction(condition_name character varying) TO avg_user;
+
+
+--
+-- TOC entry 2862 (class 0 OID 0)
+-- Dependencies: 274
+-- Name: FUNCTION get_mood_symptom_interaction(mood_in character varying); Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT ALL ON FUNCTION final_project.get_mood_symptom_interaction(mood_in character varying) TO avg_user;
+
+
+--
+-- TOC entry 2863 (class 0 OID 0)
+-- Dependencies: 244
+-- Name: TABLE body_measure_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.body_measure_instance TO avg_user;
+
+
+--
+-- TOC entry 2864 (class 0 OID 0)
+-- Dependencies: 226
+-- Name: TABLE body_measure_type; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.body_measure_type TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.body_measure_type TO avg_user;
+
+
+--
+-- TOC entry 2866 (class 0 OID 0)
+-- Dependencies: 210
+-- Name: TABLE condition_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.condition_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.condition_instance TO avg_user;
+
+
+--
+-- TOC entry 2869 (class 0 OID 0)
+-- Dependencies: 208
+-- Name: TABLE condition_type; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.condition_type TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.condition_type TO avg_user;
+
+
+--
+-- TOC entry 2871 (class 0 OID 0)
+-- Dependencies: 203
+-- Name: TABLE country_lookup_table; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,REFERENCES ON TABLE final_project.country_lookup_table TO avg_user;
+
+
+--
+-- TOC entry 2872 (class 0 OID 0)
+-- Dependencies: 229
+-- Name: TABLE exercise_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.exercise_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.exercise_instance TO avg_user;
+
+
+--
+-- TOC entry 2873 (class 0 OID 0)
+-- Dependencies: 228
+-- Name: TABLE exercise_type; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.exercise_type TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.exercise_type TO avg_user;
+
+
+--
+-- TOC entry 2875 (class 0 OID 0)
+-- Dependencies: 206
+-- Name: TABLE female_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.female_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.female_instance TO avg_female;
+
+
+--
+-- TOC entry 2876 (class 0 OID 0)
+-- Dependencies: 234
+-- Name: TABLE food_bev_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.food_bev_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.food_bev_instance TO avg_user;
+
+
+--
+-- TOC entry 2877 (class 0 OID 0)
+-- Dependencies: 233
+-- Name: TABLE food_bev_type; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.food_bev_type TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.food_bev_type TO avg_user;
+
+
+--
+-- TOC entry 2878 (class 0 OID 0)
+-- Dependencies: 237
+-- Name: TABLE intoxicant_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.intoxicant_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.intoxicant_instance TO avg_user;
+
+
+--
+-- TOC entry 2879 (class 0 OID 0)
+-- Dependencies: 231
+-- Name: TABLE locations; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.locations TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.locations TO avg_user;
+
+
+--
+-- TOC entry 2881 (class 0 OID 0)
+-- Dependencies: 248
+-- Name: TABLE medication_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.medication_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.medication_instance TO avg_user;
+
+
+--
+-- TOC entry 2882 (class 0 OID 0)
+-- Dependencies: 213
+-- Name: TABLE medication_type; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.medication_type TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.medication_type TO avg_user;
+
+
+--
+-- TOC entry 2883 (class 0 OID 0)
+-- Dependencies: 220
+-- Name: TABLE mood_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.mood_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.mood_instance TO avg_user;
+
+
+--
+-- TOC entry 2885 (class 0 OID 0)
+-- Dependencies: 218
+-- Name: TABLE mood_type; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.mood_type TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.mood_type TO avg_user;
+
+
+--
+-- TOC entry 2887 (class 0 OID 0)
+-- Dependencies: 249
+-- Name: TABLE my_conditions; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,REFERENCES ON TABLE final_project.my_conditions TO avg_user;
+
+
+--
+-- TOC entry 2888 (class 0 OID 0)
+-- Dependencies: 250
+-- Name: TABLE my_conditions_symptoms; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,REFERENCES ON TABLE final_project.my_conditions_symptoms TO avg_user;
+
+
+--
+-- TOC entry 2889 (class 0 OID 0)
+-- Dependencies: 212
+-- Name: TABLE symptom_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.symptom_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.symptom_instance TO avg_user;
+
+
+--
+-- TOC entry 2890 (class 0 OID 0)
+-- Dependencies: 245
+-- Name: TABLE my_symptoms; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,REFERENCES ON TABLE final_project.my_symptoms TO avg_user;
+
+
+--
+-- TOC entry 2891 (class 0 OID 0)
+-- Dependencies: 251
+-- Name: TABLE my_flares; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,REFERENCES ON TABLE final_project.my_flares TO avg_user;
+
+
+--
+-- TOC entry 2892 (class 0 OID 0)
+-- Dependencies: 247
+-- Name: TABLE my_moods; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,REFERENCES ON TABLE final_project.my_moods TO avg_user;
+
+
+--
+-- TOC entry 2893 (class 0 OID 0)
+-- Dependencies: 246
+-- Name: TABLE my_valence; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,REFERENCES ON TABLE final_project.my_valence TO avg_user;
+
+
+--
+-- TOC entry 2894 (class 0 OID 0)
+-- Dependencies: 253
+-- Name: TABLE my_wellness; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,REFERENCES ON TABLE final_project.my_wellness TO avg_user;
+
+
+--
+-- TOC entry 2895 (class 0 OID 0)
+-- Dependencies: 240
+-- Name: TABLE positive_event_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.positive_event_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.positive_event_instance TO avg_user;
+
+
+--
+-- TOC entry 2896 (class 0 OID 0)
+-- Dependencies: 239
+-- Name: TABLE positive_event_type; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.positive_event_type TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.positive_event_type TO avg_user;
+
+
+--
+-- TOC entry 2897 (class 0 OID 0)
+-- Dependencies: 236
+-- Name: TABLE recreational_intoxicant; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.recreational_intoxicant TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.recreational_intoxicant TO avg_user;
+
+
+--
+-- TOC entry 2899 (class 0 OID 0)
+-- Dependencies: 232
+-- Name: TABLE sleep_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.sleep_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.sleep_instance TO avg_user;
+
+
+--
+-- TOC entry 2900 (class 0 OID 0)
+-- Dependencies: 204
+-- Name: TABLE state_lookup; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,REFERENCES ON TABLE final_project.state_lookup TO PUBLIC;
+GRANT SELECT,REFERENCES ON TABLE final_project.state_lookup TO avg_user;
+
+
+--
+-- TOC entry 2901 (class 0 OID 0)
+-- Dependencies: 241
+-- Name: TABLE stressor_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.stressor_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.stressor_instance TO avg_user;
+
+
+--
+-- TOC entry 2902 (class 0 OID 0)
+-- Dependencies: 211
+-- Name: TABLE symptom_type; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.symptom_type TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.symptom_type TO avg_user;
+
+
+--
+-- TOC entry 2903 (class 0 OID 0)
+-- Dependencies: 221
+-- Name: TABLE tool_lookup; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.tool_lookup TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.tool_lookup TO avg_user;
+
+
+--
+-- TOC entry 2904 (class 0 OID 0)
+-- Dependencies: 238
+-- Name: TABLE transport_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.transport_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.transport_instance TO avg_user;
+
+
+--
+-- TOC entry 2905 (class 0 OID 0)
+-- Dependencies: 242
+-- Name: TABLE treatment; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.treatment TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.treatment TO avg_user;
+
+
+--
+-- TOC entry 2906 (class 0 OID 0)
+-- Dependencies: 243
+-- Name: TABLE treatment_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.treatment_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.treatment_instance TO avg_user;
+
+
+--
+-- TOC entry 2907 (class 0 OID 0)
+-- Dependencies: 205
+-- Name: TABLE "user"; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,REFERENCES ON TABLE final_project."user" TO PUBLIC;
+GRANT SELECT,REFERENCES ON TABLE final_project."user" TO avg_user;
+
+
+--
+-- TOC entry 2908 (class 0 OID 0)
+-- Dependencies: 224
+-- Name: TABLE vital_instance; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.vital_instance TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES,UPDATE ON TABLE final_project.vital_instance TO avg_user;
+
+
+--
+-- TOC entry 2909 (class 0 OID 0)
+-- Dependencies: 223
+-- Name: TABLE vitals_type; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.vitals_type TO PUBLIC;
+GRANT SELECT,INSERT,REFERENCES ON TABLE final_project.vitals_type TO avg_user;
+
+
+--
+-- TOC entry 2911 (class 0 OID 0)
+-- Dependencies: 252
+-- Name: TABLE worst_culprits; Type: ACL; Schema: final_project; Owner: casey
+--
+
+GRANT SELECT,REFERENCES ON TABLE final_project.worst_culprits TO avg_user;
+
+
+-- Completed on 2022-12-06 15:27:57 PST
+
+--
+-- PostgreSQL database dump complete
+--
+
